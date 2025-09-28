@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Classification Datasets Explorer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #667eea 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 32px 64px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            color: #1e3c72;
+            margin-bottom: 12px;
+            font-size: 3em;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #1e3c72, #667eea);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            color: #64748b;
+            font-size: 1.2em;
+            font-weight: 500;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 32px 24px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.25);
+            transform: translateY(0);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 48px rgba(102, 126, 234, 0.35);
+        }
+        
+        .stat-number {
+            font-size: 3.2em;
+            font-weight: 900;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .stat-label {
+            font-size: 1em;
+            opacity: 0.95;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+        
+        .tab {
+            padding: 16px 32px;
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1em;
+            color: #64748b;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .tab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border-color: #c7d2fe;
+        }
+        
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+        }
+        
+        .viz-container {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.06);
+            border: 1px solid #f1f5f9;
+        }
+        
+        #chart {
+            width: 100%;
+            min-height: 600px;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(30, 60, 114, 0.95);
+            color: white;
+            padding: 16px 20px;
+            border-radius: 12px;
+            font-size: 0.9em;
+            pointer-events: none;
+            opacity: 0;
+            z-index: 1000;
+            max-width: 320px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.2s ease;
+        }
+        
+        .grid line {
+            stroke: #f1f5f9;
+            stroke-width: 1;
+        }
+        
+        .grid path {
+            stroke-width: 0;
+        }
+        
+        .axis text {
+            fill: #64748b;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .axis path,
+        .axis line {
+            stroke: #cbd5e1;
+            stroke-width: 1;
+        }
+        
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 24px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            background: #f8fafc;
+            border-radius: 50px;
+            font-size: 0.9em;
+            font-weight: 500;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .chart-title {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        
+        .network-node {
+            stroke: #fff;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .network-link {
+            stroke: #cbd5e1;
+            stroke-opacity: 0.6;
+            stroke-width: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 Audio Datasets Explorer</h1>
+            <p class="subtitle">Interactive visualization of 40 audio classification datasets</p>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">40</div>
+                <div class="stat-label">Datasets</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">14.5K</div>
+                <div class="stat-label">Audio Hours</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">41.2K</div>
+                <div class="stat-label">Citations</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">3.5K</div>
+                <div class="stat-label">Research Papers</div>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showChart('bubble', this)">🫧 Citations vs Papers</button>
+            <button class="tab" onclick="showChart('lollipop', this)">📊 Top Datasets</button>
+            <button class="tab" onclick="showChart('heatmap', this)">🔥 Impact Matrix</button>
+            <button class="tab" onclick="showChart('accessibility', this)">🔓 Accessibility</button>
+            <button class="tab" onclick="showChart('timeline', this)">📅 Timeline by Hours</button>
+        </div>
+        
+        <div class="viz-container">
+            <div id="chart"></div>
+            <div id="legend" class="legend"></div>
+        </div>
+    </div>
+    
+    <div class="tooltip"></div>
+
+<script>
+// Updated data
+const rawData = [
+    {name: 'AudioSet', citations: 3950, year: 2017, category: 'Mixed/Other', papers: 591, size_hours: 5800.0, accessible: 'yes'},
+    {name: 'UrbanSound8K', citations: 1653, year: 2014, category: 'Environmental/Natural', papers: 100, size_hours: 8.75, accessible: 'yes'},
+    {name: 'ESC-50', citations: 1872, year: 2015, category: 'Environmental/Natural', papers: 302, size_hours: 2.78, accessible: 'yes'},
+    {name: 'VGG-Sound', citations: 618, year: 2020, category: 'Environmental/Natural', papers: 179, size_hours: 550.0, accessible: 'no'},
+    {name: 'FSD50K', citations: 524, year: 2020, category: 'Environmental/Natural', papers: 139, size_hours: 80.4, accessible: 'yes'},
+    {name: 'VoxCeleb1', citations: 793, year: 2018, category: 'Speech', papers: 490, size_hours: 2400.0, accessible: 'yes'},
+    {name: 'ICBHI Respiratory Sound Database', citations: 313, year: 2016, category: 'Environmental/Natural', papers: 12, size_hours: 5.5, accessible: 'yes'},
+    {name: 'SHD (Spiking Heidelberg Digits)', citations: 209, year: 2022, category: 'Speech', papers: 16, size_hours: 4.5, accessible: 'yes'},
+    {name: 'Speech Commands', citations: 1882, year: 2018, category: 'Speech', papers: 336, size_hours: 28.0, accessible: 'yes'},
+    {name: 'TAU2020', citations: 132, year: 2020, category: 'Environmental/Natural', papers: 0, size_hours: 64.0, accessible: 'yes'},
+    {name: 'TUT Sound Events 2017', citations: 603, year: 2017, category: 'Environmental/Natural', papers: 7, size_hours: 4.0, accessible: 'yes'},
+    {name: 'Kinetics-700', citations: 179, year: 2020, category: 'Environmental/Natural', papers: 89, size_hours: 1805.0, accessible: 'yes'},
+    {name: 'EmoDB Dataset (Berlin Database of Emotional Speech)', citations: 3072, year: 2005, category: 'Speech', papers: 6, size_hours: 0.41, accessible: 'yes'},
+    {name: 'SEP-28k', citations: 118, year: 2021, category: 'Speech', papers: 18, size_hours: 23.0, accessible: 'yes'},
+    {name: 'EPIC-Environmental/Natural (EPIC-KITCHENS-100)', citations: 47, year: 2023, category: 'Environmental/Natural', papers: 148, size_hours: 100.0, accessible: 'yes'},
+    {name: 'MINDS-14', citations: 29, year: 2021, category: 'Speech', papers: 0, size_hours: 27.0, accessible: 'yes'},
+    {name: 'BGG (PUBG Gun Sound Dataset)', citations: 8, year: 2022, category: 'Environmental/Natural', papers: 1, size_hours: 5.0, accessible: 'no'},
+    {name: 'MELD', citations: 1329, year: 2018, category: 'Speech', papers: 223, size_hours: 18.0, accessible: 'yes'},
+    {name: 'FLEURS', citations: 280, year: 2022, category: 'Speech', papers: 100, size_hours: 1400.0, accessible: 'yes'},
+    {name: 'DEEP-VOICE: DeepFake Voice Recognition (Jordan Bird)', citations: 25, year: 2023, category: 'Speech', papers: 1, size_hours: 1.0, accessible: 'yes'},
+    {name: 'RAVDESS (Ryerson Audio-Visual Database of Emotional Speech and Song)', citations: 2154, year: 2018, category: 'Speech', papers: 25, size_hours: 1.5, accessible: 'yes'},
+    {name: 'DiCOVA', citations: 115, year: 2021, category: 'Environmental/Natural', papers: 19, size_hours: 1.36, accessible: 'no'},
+    {name: 'IEMOCAP', citations: 4124, year: 2008, category: 'Speech', papers: 558, size_hours: 5.0, accessible: 'no'},
+    {name: 'Coswara Dataset', citations: 362, year: 2020, category: 'Environmental/Natural', papers: 0, size_hours: 65.0, accessible: 'yes'},
+    {name: 'COUGHVID', citations: 334, year: 2021, category: 'Environmental/Natural', papers: 27, size_hours: 35.0, accessible: 'yes'},
+    {name: 'Cat Meow', citations: 0, year: 2021, category: 'Environmental/Natural', papers: 0, size_hours: 0.3, accessible: 'yes'},
+    {name: 'CochlScene', citations: 22, year: 2022, category: 'Environmental/Natural', papers: 4, size_hours: 211.5, accessible: 'yes'},
+    {name: 'SONYC-UST-V2', citations: 44, year: 2020, category: 'Environmental/Natural', papers: 4, size_hours: 51.4, accessible: 'yes'},
+    {name: 'Free Spoken Digit Dataset (FSDD)', citations: 50, year: 2018, category: 'Speech', papers: 3, size_hours: 0.83, accessible: 'yes'},
+    {name: 'AudioMNIST', citations: 43, year: 2018, category: 'Speech', papers: 3, size_hours: 8.33, accessible: 'yes'},
+    {name: 'AFRODIGITS', citations: 1, year: 2023, category: 'Speech', papers: 0, size_hours: 0, accessible: 'no'},
+    {name: 'SpokeN-100', citations: 1, year: 2024, category: 'Speech', papers: 0, size_hours: 3.56, accessible: 'yes'},
+    {name: 'ISOLET', citations: 302, year: 1994, category: 'Speech', papers: 0, size_hours: 1, accessible: 'yes'},
+    {name: 'Nonspeech7k', citations: 9, year: 2023, category: 'Speech', papers: 0, size_hours: 6.75, accessible: 'yes'},
+    {name: 'aGender', citations: 121, year: 0, category: 'Speech', papers: 2, size_hours: 47.0, accessible: 'yes'},
+    {name: 'VocalSound', citations: 51, year: 2022, category: 'Music', papers: 19, size_hours: 23.33, accessible: 'yes'},
+    {name: 'MAD', citations: 3, year: 2024, category: 'Environmental/Natural', papers: 0, size_hours: 12.05, accessible: 'yes'},
+    {name: 'Mivia Audio Events', citations: 204, year: 2015, category: 'Environmental/Natural', papers: 0, size_hours: 23.0, accessible: 'yes'},
+    {name: 'Hey Snapdragon Keyword Dataset', citations: 53, year: 2019, category: 'Speech', papers: 0, size_hours: 6.0, accessible: 'yes'},
+    {name: 'Hey Snips', citations: 121, year: 2019, category: 'Speech', papers: 0, size_hours: 96.0, accessible: 'yes'}
+];
+
+const categoryColors = {
+    'Speech': '#ff6b6b',
+    'Environmental/Natural': '#4ecdc4', 
+    'Music': '#45b7d1',
+    'Mixed/Other': '#9b59b6',
+    'Unknown': '#95a5a6'
+};
+
+let tooltip;
+let currentSimulation = null;
+
+function showChart(type, button) {
+    // Stop any running simulation
+    if (currentSimulation) {
+        currentSimulation.stop();
+        currentSimulation = null;
+    }
+    
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    if (button) button.classList.add('active');
+    
+    // Clear previous chart
+    d3.select('#chart').selectAll('*').remove();
+    d3.select('#legend').selectAll('*').remove();
+    
+    tooltip = d3.select('.tooltip');
+    
+    switch(type) {
+        case 'bubble': 
+            drawBubbleChart(); 
+            break;
+        case 'lollipop': 
+            drawLollipopChart(); 
+            break;
+        case 'heatmap': 
+            drawHeatmapChart(); 
+            break;
+        case 'accessibility': 
+            drawAccessibilityChart(); 
+            break;
+        case 'timeline': 
+            drawTimelineChart(); 
+            break;
+        default:
+            drawBubbleChart();
+    }
+}
+
+function drawBubbleChart() {
+    const width = document.getElementById('chart').offsetWidth;
+    const height = 600;
+    const margin = {top: 60, right: 60, bottom: 80, left: 80};
+    
+    // Reset chart height for non-timeline charts
+    d3.select('#chart').style('min-height', '600px');
+    
+    const svg = d3.select('#chart').append('svg')
+        .attr('width', width)
+        .attr('height', height);
+    
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 30)
+        .attr('text-anchor', 'middle')
+        .attr('class', 'chart-title')
+        .text('Dataset Popularity vs Research Activity');
+    
+    const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    const bubbleData = rawData.filter(d => d.citations > 0 && d.papers > 0);
+    
+    const xScale = d3.scaleLog()
+        .domain([1, d3.max(bubbleData, d => d.citations)])
+        .range([0, width - margin.left - margin.right]);
+    
+    const yScale = d3.scaleLog()
+        .domain([1, d3.max(bubbleData, d => d.papers)])
+        .range([height - margin.top - margin.bottom, 0]);
+    
+    const sizeScale = d3.scaleSqrt()
+        .domain([0, d3.max(rawData, d => d.size_hours)])
+        .range([8, 60]);
+    
+    // Grid
+    g.append('g')
+        .attr('class', 'grid')
+        .attr('transform', `translate(0,${height - margin.top - margin.bottom})`)
+        .call(d3.axisBottom(xScale)
+            .tickSize(-(height - margin.top - margin.bottom))
+            .tickFormat(''));
+    
+    g.append('g')
+        .attr('class', 'grid')
+        .call(d3.axisLeft(yScale)
+            .tickSize(-(width - margin.left - margin.right))
+            .tickFormat(''));
+    
+    // Axes
+    g.append('g')
+        .attr('class', 'axis')
+        .attr('transform', `translate(0,${height - margin.top - margin.bottom})`)
+        .call(d3.axisBottom(xScale).tickFormat(d3.format('.0f')));
+    
+    g.append('g')
+        .attr('class', 'axis')
+        .call(d3.axisLeft(yScale).tickFormat(d3.format('.0f')));
+    
+    // Axis labels
+    g.append('text')
+        .attr('x', (width - margin.left - margin.right) / 2)
+        .attr('y', height - margin.top - margin.bottom + 50)
+        .style('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', '600')
+        .style('fill', '#64748b')
+        .text('Citations (log scale)');
+    
+    g.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -(height - margin.top - margin.bottom) / 2)
+        .attr('y', -50)
+        .style('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', '600')
+        .style('fill', '#64748b')
+        .text('Papers (log scale)');
+    
+    // Bubbles
+    g.selectAll('.bubble')
+        .data(bubbleData)
+        .enter().append('circle')
+        .attr('class', 'bubble')
+        .attr('cx', d => xScale(d.citations))
+        .attr('cy', d => yScale(d.papers))
+        .attr('r', 0)
+        .style('fill', d => categoryColors[d.category] || categoryColors['Unknown'])
+        .style('opacity', 0.7)
+        .style('stroke', '#fff')
+        .style('stroke-width', 2)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .transition().duration(200)
+                .attr('r', sizeScale(d.size_hours || 5) * 1.2)
+                .style('opacity', 1);
+            
+            tooltip.style('opacity', 1)
+                .html(`<strong>${d.name}</strong><br/>
+                    📊 Citations: ${d.citations.toLocaleString()}<br/>
+                    📝 Papers: ${d.papers}<br/>
+                    ⏱️ Hours: ${d.size_hours.toLocaleString()}<br/>
+                    🏷️ Category: ${d.category}`)
+                .style('left', (event.pageX + 15) + 'px')
+                .style('top', (event.pageY - 15) + 'px');
+        })
+        .on('mouseout', function(event, d) {
+            d3.select(this)
+                .transition().duration(200)
+                .attr('r', sizeScale(d.size_hours || 5))
+                .style('opacity', 0.7);
+            
+            tooltip.style('opacity', 0);
+        })
+        .transition()
+        .duration(1500)
+        .delay((d, i) => i * 30)
+        .attr('r', d => sizeScale(d.size_hours || 5));
+    
+    createLegend();
+}
+
+function drawLollipopChart() {
+    const width = document.getElementById('chart').offsetWidth;
+    const height = 600;
+    const margin = {top: 60, right: 60, bottom: 140, left: 200};
+    
+    // Reset chart height for non-timeline charts
+    d3.select('#chart').style('min-height', '600px');
+    
+    const svg = d3.select('#chart').append('svg')
+        .attr('width', width)
+        .attr('height', height);
+    
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 30)
+        .attr('text-anchor', 'middle')
+        .attr('class', 'chart-title')
+        .text('Top 20 Datasets by Citations');
+    
+    const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    const topData = [...rawData]
+        .sort((a, b) => b.citations - a.citations)
+        .slice(0, 20);
+    
+    const xScale = d3.scaleLinear()
+        .domain([0, d3.max(topData, d => d.citations)])
+        .range([0, width - margin.left - margin.right]);
+    
+    const yScale = d3.scaleBand()
+        .domain(topData.map(d => d.name))
+        .range([0, height - margin.top - margin.bottom])
+        .padding(0.3);
+    
+    // Grid
+    g.append('g')
+        .attr('class', 'grid')
+        .call(d3.axisLeft(yScale)
+            .tickSize(-(width - margin.left - margin.right))
+            .tickFormat(''));
+    
+    // Axes
+    g.append('g')
+        .attr('class', 'axis')
+        .attr('transform', `translate(0,${height - margin.top - margin.bottom})`)
+        .call(d3.axisBottom(xScale).tickFormat(d3.format('.0f')));
+    
+    g.append('g')
+        .attr('class', 'axis')
+        .call(d3.axisLeft(yScale));
+    
+    // Lollipop stems
+    g.selectAll('.stem')
+        .data(topData)
+        .enter().append('line')
+        .attr('class', 'stem')
+        .attr('x1', 0)
+        .attr('x2', 0)
+        .attr('y1', d => yScale(d.name) + yScale.bandwidth() / 2)
+        .attr('y2', d => yScale(d.name) + yScale.bandwidth() / 2)
+        .style('stroke', '#cbd5e1')
+        .style('stroke-width', 3)
+        .transition()
+        .duration(1000)
+        .delay((d, i) => i * 50)
+        .attr('x2', d => xScale(d.citations));
+    
+    // Lollipop heads
+    g.selectAll('.lollipop')
+        .data(topData)
+        .enter().append('circle')
+        .attr('class', 'lollipop')
+        .attr('cx', 0)
+        .attr('cy', d => yScale(d.name) + yScale.bandwidth() / 2)
+        .attr('r', 0)
+        .style('fill', d => categoryColors[d.category] || categoryColors['Unknown'])
+        .style('stroke', '#fff')
+        .style('stroke-width', 3)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .transition().duration(200)
+                .attr('r', 12);
+            
+            tooltip.style('opacity', 1)
+                .html(`<strong>${d.name}</strong><br/>
+                    📊 Citations: ${d.citations.toLocaleString()}<br/>
+                    🏷️ Category: ${d.category}<br/>
+                    📅 Year: ${d.year || 'N/A'}`)
+                .style('left', (event.pageX + 15) + 'px')
+                .style('top', (event.pageY - 15) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this)
+                .transition().duration(200)
+                .attr('r', 8);
+            
+            tooltip.style('opacity', 0);
+        })
+        .transition()
+        .duration(1000)
+        .delay((d, i) => i * 50)
+        .attr('cx', d => xScale(d.citations))
+        .attr('r', 8);
+}
+
+function drawNetworkGraph() {
+    const width = document.getElementById('chart').offsetWidth;
+    const height = 600;
+    const margin = 60;
+    
+    const svg = d3.select('#chart').append('svg')
+        .attr('width', width)
+        .attr('height', height);
+    
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 30)
+        .attr('text-anchor', 'middle')
+        .attr('class', 'chart-title')
+        .text('Dataset Network by Category');
+    
+    // Create nodes with proper positioning constraints
+    const nodes = rawData.map((d, i) => ({
+        id: d.name,
+        category: d.category,
+        citations: d.citations,
+        papers: d.papers,
+        size_hours: d.size_hours,
+        year: d.year,
+        radius: Math.max(6, Math.min(20, Math.sqrt(d.citations) * 0.6)),
+        x: margin + Math.random() * (width - 2 * margin),
+        y: margin + 40 + Math.random() * (height - 2 * margin - 40)
+    }));
+    
+    // Create simpler links within categories only
+    const links = [];
+    const categoryGroups = d3.group(nodes, d => d.category);
+    
+    categoryGroups.forEach((groupNodes) => {
+        // Connect each node to 1-2 others in same category
+        for (let i = 0; i < groupNodes.length; i++) {
+            for (let j = i + 1; j < Math.min(i + 2, groupNodes.length); j++) {
+                links.push({
+                    source: groupNodes[i].id,
+                    target: groupNodes[j].id,
+                    category: groupNodes[i].category
+                });
+            }
+        }
+    });
+    
+    const simulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(links).id(d => d.id).distance(60).strength(0.3))
+        .force('charge', d3.forceManyBody().strength(-150).distanceMax(100))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(d => d.radius + 3))
+        .force('boundary', () => {
+            // Keep nodes within bounds
+            nodes.forEach(d => {
+                d.x = Math.max(d.radius + margin, Math.min(width - d.radius - margin, d.x));
+                d.y = Math.max(d.radius + margin + 40, Math.min(height - d.radius - margin, d.y));
+            });
+        });
+    
+    currentSimulation = simulation;
+    
+    const linkElements = svg.append('g')
+        .selectAll('line')
+        .data(links)
+        .enter()
+        .append('line')
+        .attr('class', 'network-link')
+        .style('stroke', d => categoryColors[d.category] || '#cbd5e1')
+        .style('stroke-width', 1.5)
+        .style('opacity', 0.4);
+    
+    const nodeElements = svg.append('g')
+        .selectAll('circle')
+        .data(nodes)
+        .enter()
+        .append('circle')
+        .attr('class', 'network-node')
+        .attr('r', d => d.radius)
+        .style('fill', d => categoryColors[d.category] || categoryColors['Unknown'])
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this)
+                .transition().duration(200)
+                .attr('r', d.radius * 1.4)
+                .style('stroke-width', 3);
+            
+            // Highlight connected links
+            linkElements
+                .style('opacity', link => 
+                    (link.source.id === d.id || link.target.id === d.id) ? 0.8 : 0.1)
+                .style('stroke-width', link =>
+                    (link.source.id === d.id || link.target.id === d.id) ? 3 : 1.5);
+            
+            tooltip.style('opacity', 1)
+                .html(`<strong>${d.id}</strong><br/>
+                    📊 Citations: ${d.citations.toLocaleString()}<br/>
+                    📝 Papers: ${d.papers || 0}<br/>
+                    🏷️ Category: ${d.category}<br/>
+                    📅 Year: ${d.year || 'N/A'}`)
+                .style('left', (event.pageX + 15) + 'px')
+                .style('top', (event.pageY - 15) + 'px');
+        })
+        .on('mouseout', function(event, d) {
+            d3.select(this)
+                .transition().duration(200)
+                .attr('r', d.radius)
+                .style('stroke-width', 2);
+            
+            // Reset link styles
+            linkElements
+                .style('opacity', 0.4)
+                .style('stroke-width', 1.5);
+            
+            tooltip.style('opacity', 0);
+        })
+        .call(d3.drag()
+            .on('start', dragstarted)
+            .on('drag', dragged)
+            .on('end', dragended));
+    
+    simulation.on('tick', () => {
+        linkElements
+            .attr('x1', d => d.source.x)
+            .attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x)
+            .attr('y2', d => d.target.y);
+        
+        nodeElements
+            .attr('cx', d => d.x)
+            .attr('cy', d => d.y);
+    });
+    
+    function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+    
+    function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+    
+    function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+    
+    createLegend();
+}
+
+function drawHeatmapChart() {
+    const width = document.getElementById('chart').offsetWidth;
+    const height = 600;
+    const margin = {top: 60, right: 120, bottom: 80, left: 150};
+    
+    // Reset chart height for non-timeline charts
+    d3.select('#chart').style('min-height', '600px');
+    
+    const svg = d3.select('#chart').append('svg')
+        .attr('width', width)
+        .attr('height', height);
+    
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 30)
+        .attr('text-anchor', 'middle')
+        .attr('class', 'chart-title')
+        .text('Citation vs Papers Density Heatmap');
+    
+    const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    const heatmapData = rawData.filter(d => d.citations > 0 && d.papers > 0);
+    
+    // Create bins
+    const citationBins = [0, 100, 500, 1000, 2000, 5000];
+    const paperBins = [0, 10, 25, 50, 100, 200, 300];
+    
+    // Create matrix data
+    const matrixData = [];
+    for (let i = 0; i < citationBins.length - 1; i++) {
+        for (let j = 0; j < paperBins.length - 1; j++) {
+            const datasets = heatmapData.filter(d => 
+                d.citations >= citationBins[i] && d.citations < citationBins[i + 1] &&
+                d.papers >= paperBins[j] && d.papers < paperBins[j + 1]
+            );
+            
+            matrixData.push({
+                citationRange: `${citationBins[i]}-${citationBins[i + 1]}`,
+                citationIndex: i,
+                paperRange: `${paperBins[j]}-${paperBins[j + 1]}`,
+                paperIndex: j,
+                count: datasets.length,
+                datasets: datasets
+            });
+        }
+    }
+    
+    const cellWidth = (width - margin.left - margin.right) / (citationBins.length - 1);
+    const cellHeight = (height - margin.top - margin.bottom) / (paperBins.length - 1);
+    
+    const colorScale = d3.scaleSequential(d3.interpolateReds)
+        .domain([0, d3.max(matrixData, d => d.count)]);
+    
+    // Create cells
+    g.selectAll('.heatmap-cell')
+        .data(matrixData)
+        .enter().append('rect')
+        .attr('class', 'heatmap-cell')
+        .attr('x', d => d.citationIndex * cellWidth)
+        .attr('y', d => (paperBins.length - 2 - d.paperIndex) * cellHeight)
+        .attr('width', cellWidth - 2)
+        .attr('height', cellHeight - 2)
+        .style('fill', d => d.count > 0 ? colorScale(d.count) : '#f8f9fa')
+        .style('stroke', '#fff')
+        .style('stroke-width', 2)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            const datasetNames = d.datasets.map(ds => ds.name).join(', ');
+            tooltip.style('opacity', 1)
+                .html(`<strong>Range</strong><br/>
+                    Citations: ${d.citationRange}<br/>
+                    Papers: ${d.paperRange}<br/>
+                    Datasets: ${d.count}<br/>
+                    Names: ${datasetNames || 'None'}`)
+                .style('left', (event.pageX + 15) + 'px')
+                .style('top', (event.pageY - 15) + 'px');
+        })
+        .on('mouseout', function() {
+            tooltip.style('opacity', 0);
+        });
+    
+    // Add labels
+    g.selectAll('.x-label')
+        .data(citationBins.slice(0, -1))
+        .enter().append('text')
+        .attr('x', (d, i) => i * cellWidth + cellWidth / 2)
+        .attr('y', height - margin.top - margin.bottom + 25)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '12px')
+        .text(d => `${d}+`);
+    
+    g.selectAll('.y-label')
+        .data(paperBins.slice(0, -1))
+        .enter().append('text')
+        .attr('x', -10)
+        .attr('y', (d, i) => (paperBins.length - 2 - i) * cellHeight + cellHeight / 2)
+        .attr('text-anchor', 'end')
+        .attr('dominant-baseline', 'middle')
+        .style('font-size', '12px')
+        .text(d => `${d}+`);
+    
+    // Axis titles
+    g.append('text')
+        .attr('x', (width - margin.left - margin.right) / 2)
+        .attr('y', height - margin.top - margin.bottom + 60)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', '600')
+        .text('Citations');
+    
+    g.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -(height - margin.top - margin.bottom) / 2)
+        .attr('y', -80)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', '600')
+        .text('Papers');
+}
+
+function drawTimelineChart() {
+    const width = document.getElementById('chart').offsetWidth;
+    const years = [...new Set(rawData.filter(d => d.year > 0 && d.year <= 2024).map(d => d.year))].sort();
+    
+    // Dynamic height calculation based on number of years with generous spacing
+    const yearSpacing = 80; // Fixed spacing between years
+    const dynamicHeight = Math.max(800, years.length * yearSpacing + 200); // Ensure minimum height
+    
+    const margin = {top: 80, right: 60, bottom: 80, left: 80};
+    
+    // Update chart container height for this visualization only
+    d3.select('#chart').style('min-height', `${dynamicHeight}px`);
+    
+    const svg = d3.select('#chart').append('svg')
+        .attr('width', width)
+        .attr('height', dynamicHeight);
+    
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 30)
+        .attr('text-anchor', 'middle')
+        .attr('class', 'chart-title')
+        .text('Dataset Evolution Timeline (Sorted by Hours)');
+    
+    const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Filter and prepare data
+    const timelineData = rawData.filter(d => d.year > 0 && d.year <= 2024);
+    
+    // Group data by year and sort each year's datasets by hours (low to high)
+    const yearGroups = d3.group(timelineData, d => d.year);
+    yearGroups.forEach((datasets, year) => {
+        datasets.sort((a, b) => (a.size_hours || 0) - (b.size_hours || 0));
+    });
+    
+    // Fixed bubble size for all datasets
+    const bubbleRadius = 16;
+    
+    // Create timeline backbone with fixed spacing
+    const totalTimelineHeight = (years.length - 1) * yearSpacing;
+    
+    // Main timeline line
+    g.append('line')
+        .attr('x1', 80)
+        .attr('y1', 0)
+        .attr('x2', 80)
+        .attr('y2', 0)
+        .style('stroke', '#cbd5e1')
+        .style('stroke-width', 4)
+        .transition()
+        .duration(2000)
+        .attr('y2', totalTimelineHeight);
+    
+    // Year entries
+    years.forEach((year, yearIndex) => {
+        const yPos = yearIndex * yearSpacing;
+        const datasets = yearGroups.get(year); // Already sorted by hours
+        
+        // Year marker
+        g.append('circle')
+            .attr('cx', 80)
+            .attr('cy', yPos)
+            .attr('r', 0)
+            .style('fill', '#667eea')
+            .style('stroke', '#fff')
+            .style('stroke-width', 3)
+            .transition()
+            .duration(800)
+            .delay(yearIndex * 150)
+            .attr('r', 8);
+        
+        // Year label
+        g.append('text')
+            .attr('x', 60)
+            .attr('y', yPos + 5)
+            .attr('text-anchor', 'end')
+            .style('font-size', '16px')
+            .style('font-weight', '700')
+            .style('fill', '#1e3c72')
+            .style('opacity', 0)
+            .text(year)
+            .transition()
+            .duration(600)
+            .delay(yearIndex * 150 + 200)
+            .style('opacity', 1);
+        
+        // Dataset count for year
+        g.append('text')
+            .attr('x', 60)
+            .attr('y', yPos + 20)
+            .attr('text-anchor', 'end')
+            .style('font-size', '12px')
+            .style('fill', '#64748b')
+            .style('opacity', 0)
+            .text(`${datasets.length} dataset${datasets.length > 1 ? 's' : ''}`)
+            .transition()
+            .duration(600)
+            .delay(yearIndex * 150 + 300)
+            .style('opacity', 0.8);
+        
+        // Dataset bubbles for this year (sorted by hours, low to high)
+        datasets.forEach((dataset, datasetIndex) => {
+            const xOffset = 120 + (datasetIndex * 55); // Slightly reduced spacing for uniform bubbles
+            
+            // Dataset bubble (uniform size)
+            g.append('circle')
+                .attr('cx', 120)
+                .attr('cy', yPos)
+                .attr('r', 0)
+                .style('fill', categoryColors[dataset.category] || categoryColors['Unknown'])
+                .style('stroke', '#fff')
+                .style('stroke-width', 2)
+                .style('opacity', 0.8)
+                .style('cursor', 'pointer')
+                .on('mouseover', function(event) {
+                    d3.select(this)
+                        .transition().duration(200)
+                        .attr('r', bubbleRadius * 1.3)
+                        .style('opacity', 1)
+                        .style('stroke-width', 3);
+                    
+                    tooltip.style('opacity', 1)
+                        .html(`<strong>${dataset.name}</strong><br/>
+                            📅 Year: ${dataset.year}<br/>
+                            ⏱️ Hours: ${dataset.size_hours ? dataset.size_hours.toLocaleString() : 'N/A'}<br/>
+                            📊 Citations: ${dataset.citations.toLocaleString()}<br/>
+                            📝 Papers: ${dataset.papers || 0}<br/>
+                            🏷️ Category: ${dataset.category}`)
+                        .style('left', (event.pageX + 15) + 'px')
+                        .style('top', (event.pageY - 15) + 'px');
+                })
+                .on('mouseout', function() {
+                    d3.select(this)
+                        .transition().duration(200)
+                        .attr('r', bubbleRadius)
+                        .style('opacity', 0.8)
+                        .style('stroke-width', 2);
+                    
+                    tooltip.style('opacity', 0);
+                })
+                .transition()
+                .duration(1000)
+                .delay(yearIndex * 150 + datasetIndex * 100 + 500)
+                .ease(d3.easeBounce)
+                .attr('cx', xOffset)
+                .attr('r', bubbleRadius);
+            
+            // Dataset name label
+            g.append('text')
+                .attr('x', xOffset)
+                .attr('y', yPos + bubbleRadius + 15)
+                .attr('text-anchor', 'middle')
+                .style('font-size', '10px')
+                .style('font-weight', '600')
+                .style('fill', '#475569')
+                .style('opacity', 0)
+                .text(dataset.name.length > 10 ? dataset.name.substring(0, 8) + '...' : dataset.name)
+                .transition()
+                .duration(800)
+                .delay(yearIndex * 150 + datasetIndex * 100 + 800)
+                .style('opacity', 0.9);
+            
+            // Hours label (showing the sorting criteria)
+            g.append('text')
+                .attr('x', xOffset)
+                .attr('y', yPos - bubbleRadius - 5)
+                .attr('text-anchor', 'middle')
+                .style('font-size', '9px')
+                .style('font-weight', '600')
+                .style('fill', '#64748b')
+                .style('opacity', 0)
+                .text(dataset.size_hours ? 
+                    (dataset.size_hours >= 1000 ? `${Math.round(dataset.size_hours/1000)}k` : dataset.size_hours) + 'h' 
+                    : 'N/A')
+                .transition()
+                .duration(800)
+                .delay(yearIndex * 150 + datasetIndex * 100 + 1000)
+                .style('opacity', 0.7);
+            
+            // Connection line from timeline to dataset
+            g.append('line')
+                .attr('x1', 88)
+                .attr('y1', yPos)
+                .attr('x2', 88)
+                .attr('y2', yPos)
+                .style('stroke', '#cbd5e1')
+                .style('stroke-width', 2)
+                .style('opacity', 0.6)
+                .transition()
+                .duration(600)
+                .delay(yearIndex * 150 + datasetIndex * 100 + 400)
+                .attr('x2', xOffset - bubbleRadius - 5);
+        });
+    });
+    
+    // Add legend explaining the sorting and uniform size
+    const legendG = g.append('g')
+        .attr('transform', `translate(${width - margin.left - margin.right - 250}, 50)`);
+    
+    legendG.append('text')
+        .attr('x', 0)
+        .attr('y', 0)
+        .style('font-size', '14px')
+        .style('font-weight', '600')
+        .style('fill', '#475569')
+        .text('Sorted by Audio Hours (Low → High)');
+    
+    legendG.append('text')
+        .attr('x', 0)
+        .attr('y', 20)
+        .style('font-size', '12px')
+        .style('fill', '#64748b')
+        .text('All bubbles same size • Hours shown above');
+    
+    // Sample bubble
+    legendG.append('circle')
+        .attr('cx', 20)
+        .attr('cy', 45)
+        .attr('r', bubbleRadius)
+        .style('fill', '#cbd5e1')
+        .style('stroke', '#fff')
+        .style('stroke-width', 2)
+        .style('opacity', 0.7);
+    
+    legendG.append('text')
+        .attr('x', 50)
+        .attr('y', 50)
+        .style('font-size', '12px')
+        .style('fill', '#64748b')
+        .text('Dataset');
+    
+    createLegend();
+}
+
+function drawAccessibilityChart() {
+    const width = document.getElementById('chart').offsetWidth;
+    const height = 800; // Increased height from 600 to 800
+    const margin = {top: 80, right: 60, bottom: 120, left: 80}; // Increased bottom margin
+    
+    // Set chart height for accessibility chart
+    d3.select('#chart').style('min-height', '800px');
+    
+    const svg = d3.select('#chart').append('svg')
+        .attr('width', width)
+        .attr('height', height);
+    
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 30)
+        .attr('text-anchor', 'middle')
+        .attr('class', 'chart-title')
+        .text('Dataset Accessibility Overview');
+    
+    const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Split data by accessibility
+    const accessibleData = rawData.filter(d => d.accessible === 'yes');
+    const notAccessibleData = rawData.filter(d => d.accessible === 'no');
+    
+    // Create summary stats
+    const accessibleStats = {
+        count: accessibleData.length,
+        totalCitations: d3.sum(accessibleData, d => d.citations),
+        totalHours: d3.sum(accessibleData, d => d.size_hours),
+        avgCitations: d3.mean(accessibleData, d => d.citations)
+    };
+    
+    const notAccessibleStats = {
+        count: notAccessibleData.length,
+        totalCitations: d3.sum(notAccessibleData, d => d.citations),
+        totalHours: d3.sum(notAccessibleData, d => d.size_hours),
+        avgCitations: d3.mean(notAccessibleData, d => d.citations)
+    };
+    
+    // Create two-column layout
+    const chartWidth = width - margin.left - margin.right;
+    const columnWidth = chartWidth / 2 - 40;
+    
+    // Accessible datasets (left side)
+    const accessibleG = g.append('g')
+        .attr('transform', 'translate(0, 0)');
+    
+    // Not accessible datasets (right side)
+    const notAccessibleG = g.append('g')
+        .attr('transform', `translate(${columnWidth + 80}, 0)`);
+    
+    // Draw accessible section
+    drawAccessibilitySection(accessibleG, accessibleData, accessibleStats, columnWidth, 
+        'Accessible Datasets', '#27ae60', true);
+    
+    // Draw not accessible section
+    drawAccessibilitySection(notAccessibleG, notAccessibleData, notAccessibleStats, columnWidth, 
+        'Not Accessible Datasets', '#e74c3c', false);
+    
+    // Add comparison metrics in center - moved much higher
+    const centerX = chartWidth / 2;
+    const comparisonG = g.append('g')
+        .attr('transform', `translate(${centerX}, ${height - margin.top - margin.bottom - 120})`);
+    
+    // Comparison stats
+    comparisonG.append('text')
+        .attr('text-anchor', 'middle')
+        .attr('y', 0)
+        .style('font-size', '16px')
+        .style('font-weight', '700')
+        .style('fill', '#2c3e50')
+        .text('Accessibility Comparison');
+    
+    const comparisonData = [
+        {label: 'Total Datasets', accessible: accessibleStats.count, notAccessible: notAccessibleStats.count},
+        {label: 'Total Citations', accessible: accessibleStats.totalCitations, notAccessible: notAccessibleStats.totalCitations},
+        {label: 'Avg Citations', accessible: Math.round(accessibleStats.avgCitations), notAccessible: Math.round(notAccessibleStats.avgCitations)},
+        {label: 'Total Hours', accessible: Math.round(accessibleStats.totalHours), notAccessible: Math.round(notAccessibleStats.totalHours)}
+    ];
+    
+    comparisonData.forEach((d, i) => {
+        const yPos = 30 + i * 25;
+        
+        comparisonG.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('y', yPos)
+            .style('font-size', '12px')
+            .style('font-weight', '600')
+            .style('fill', '#34495e')
+            .text(d.label);
+        
+        comparisonG.append('text')
+            .attr('text-anchor', 'end')
+            .attr('x', -20)
+            .attr('y', yPos + 15)
+            .style('font-size', '14px')
+            .style('font-weight', '700')
+            .style('fill', '#27ae60')
+            .text(typeof d.accessible === 'number' && d.accessible > 1000 ? 
+                `${(d.accessible/1000).toFixed(1)}k` : d.accessible);
+        
+        comparisonG.append('text')
+            .attr('text-anchor', 'start')
+            .attr('x', 20)
+            .attr('y', yPos + 15)
+            .style('font-size', '14px')
+            .style('font-weight', '700')
+            .style('fill', '#e74c3c')
+            .text(typeof d.notAccessible === 'number' && d.notAccessible > 1000 ? 
+                `${(d.notAccessible/1000).toFixed(1)}k` : d.notAccessible);
+    });
+    
+    function drawAccessibilitySection(container, data, stats, width, title, color, isAccessible) {
+        // Section title
+        container.append('text')
+            .attr('x', width / 2)
+            .attr('y', -20)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '18px')
+            .style('font-weight', '700')
+            .style('fill', color)
+            .text(title);
+        
+        // Summary box
+        const summaryBox = container.append('g')
+            .attr('transform', 'translate(0, 0)');
+        
+        summaryBox.append('rect')
+            .attr('width', width)
+            .attr('height', 100)
+            .style('fill', color)
+            .style('opacity', 0.1)
+            .style('rx', 10);
+        
+        // Summary stats
+        const summaryStats = [
+            {label: 'Datasets', value: stats.count},
+            {label: 'Citations', value: stats.totalCitations > 1000 ? `${(stats.totalCitations/1000).toFixed(1)}k` : stats.totalCitations},
+            {label: 'Hours', value: stats.totalHours > 1000 ? `${(stats.totalHours/1000).toFixed(1)}k` : Math.round(stats.totalHours)},
+            {label: 'Avg Citations', value: Math.round(stats.avgCitations)}
+        ];
+        
+        summaryStats.forEach((stat, i) => {
+            const x = (i % 2) * (width / 2) + width / 4;
+            const y = Math.floor(i / 2) * 40 + 30;
+            
+            summaryBox.append('text')
+                .attr('x', x)
+                .attr('y', y - 5)
+                .attr('text-anchor', 'middle')
+                .style('font-size', '20px')
+                .style('font-weight', '900')
+                .style('fill', color)
+                .text(stat.value);
+            
+            summaryBox.append('text')
+                .attr('x', x)
+                .attr('y', y + 12)
+                .attr('text-anchor', 'middle')
+                .style('font-size', '11px')
+                .style('font-weight', '600')
+                .style('fill', '#7f8c8d')
+                .text(stat.label);
+        });
+        
+        // Category breakdown
+        const categoryBreakdown = d3.group(data, d => d.category);
+        const categoryData = Array.from(categoryBreakdown, ([category, datasets]) => ({
+            category,
+            count: datasets.length,
+            citations: d3.sum(datasets, d => d.citations)
+        })).sort((a, b) => b.count - a.count);
+        
+        const categoryG = container.append('g')
+            .attr('transform', 'translate(0, 130)');
+        
+        categoryG.append('text')
+            .attr('x', width / 2)
+            .attr('y', 0)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '14px')
+            .style('font-weight', '600')
+            .style('fill', '#2c3e50')
+            .text('By Category');
+        
+        // Category bars
+        const maxCount = d3.max(categoryData, d => d.count);
+        const barScale = d3.scaleLinear()
+            .domain([0, maxCount])
+            .range([0, width - 40]);
+        
+        categoryData.forEach((d, i) => {
+            const yPos = 30 + i * 35;
+            
+            // Bar background
+            categoryG.append('rect')
+                .attr('x', 20)
+                .attr('y', yPos)
+                .attr('width', width - 40)
+                .attr('height', 25)
+                .style('fill', '#ecf0f1')
+                .style('rx', 12);
+            
+            // Bar
+            categoryG.append('rect')
+                .attr('x', 20)
+                .attr('y', yPos)
+                .attr('width', 0)
+                .attr('height', 25)
+                .style('fill', categoryColors[d.category] || '#95a5a6')
+                .style('rx', 12)
+                .transition()
+                .duration(1000)
+                .delay(i * 200)
+                .attr('width', barScale(d.count));
+            
+            // Category label
+            categoryG.append('text')
+                .attr('x', 30)
+                .attr('y', yPos + 17)
+                .style('font-size', '11px')
+                .style('font-weight', '600')
+                .style('fill', '#2c3e50')
+                .text(d.category);
+            
+            // Count
+            categoryG.append('text')
+                .attr('x', width - 30)
+                .attr('y', yPos + 17)
+                .attr('text-anchor', 'end')
+                .style('font-size', '12px')
+                .style('font-weight', '700')
+                .style('fill', '#2c3e50')
+                .text(d.count);
+        });
+        
+        // Top datasets list
+        const topDatasetsG = container.append('g')
+            .attr('transform', 'translate(0, 320)');
+        
+        topDatasetsG.append('text')
+            .attr('x', width / 2)
+            .attr('y', 0)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '14px')
+            .style('font-weight', '600')
+            .style('fill', '#2c3e50')
+            .text('Top Datasets by Citations');
+        
+        const topDatasets = [...data]
+            .sort((a, b) => b.citations - a.citations)
+            .slice(0, 5);
+        
+        topDatasets.forEach((dataset, i) => {
+            const yPos = 25 + i * 20;
+            
+            topDatasetsG.append('circle')
+                .attr('cx', 10)
+                .attr('cy', yPos)
+                .attr('r', 0)
+                .style('fill', categoryColors[dataset.category] || '#95a5a6')
+                .transition()
+                .duration(800)
+                .delay(i * 100)
+                .attr('r', 6);
+            
+            topDatasetsG.append('text')
+                .attr('x', 25)
+                .attr('y', yPos + 4)
+                .style('font-size', '11px')
+                .style('font-weight', '500')
+                .style('fill', '#2c3e50')
+                .style('opacity', 0)
+                .text(dataset.name.length > 25 ? dataset.name.substring(0, 22) + '...' : dataset.name)
+                .transition()
+                .duration(600)
+                .delay(i * 100 + 200)
+                .style('opacity', 1);
+            
+            topDatasetsG.append('text')
+                .attr('x', width - 10)
+                .attr('y', yPos + 4)
+                .attr('text-anchor', 'end')
+                .style('font-size', '10px')
+                .style('font-weight', '600')
+                .style('fill', '#7f8c8d')
+                .style('opacity', 0)
+                .text(dataset.citations > 1000 ? `${(dataset.citations/1000).toFixed(1)}k` : dataset.citations)
+                .transition()
+                .duration(600)
+                .delay(i * 100 + 200)
+                .style('opacity', 1);
+        });
+    }
+}
+
+function createLegend() {
+    const legendContainer = d3.select('#legend');
+    const categories = Object.keys(categoryColors).filter(cat => cat !== 'Unknown');
+    
+    // Clear previous legend
+    legendContainer.selectAll('*').remove();
+    
+    categories.forEach((category, i) => {
+        const legendItem = legendContainer
+            .append('div')
+            .attr('class', 'legend-item')
+            .style('opacity', 0);
+        
+        legendItem
+            .append('div')
+            .attr('class', 'legend-dot')
+            .style('background-color', categoryColors[category]);
+        
+        legendItem
+            .append('span')
+            .text(category);
+        
+        // Animate legend items
+        legendItem
+            .transition()
+            .duration(800)
+            .delay(i * 100)
+            .style('opacity', 1);
+    });
+}
+
+// Initialize with bubble chart
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        showChart('bubble');
+    }, 100);
+});
+</script>
+</body>
+</html>
