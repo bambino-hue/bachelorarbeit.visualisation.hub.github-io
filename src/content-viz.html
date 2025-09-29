@@ -493,15 +493,31 @@
                     .attr('class', `category-arc category-${cat.replace(/[\/\s]/g, '-')}`)
                     .style('cursor', 'pointer')
                     .on('mouseover', function(event, d) {
-                        d3.select(this).attr('opacity', 0.85);
+                        if (!currentSelection) {
+                            d3.select(this).attr('opacity', 0.85);
+                        }
                         tooltip.style('opacity', .95);
                         tooltip.html(`<strong>${cat}</strong><br/>Total: ${categoryData[cat].total} datasets`)
                             .style('left', (event.pageX + 10) + 'px')
                             .style('top', (event.pageY - 28) + 'px');
                     })
                     .on('mouseout', function(d) {
-                        d3.select(this).attr('opacity', 1);
+                        if (!currentSelection) {
+                            d3.select(this).attr('opacity', 1);
+                        }
                         tooltip.style('opacity', 0);
+                    })
+                    .on('click', function(event, d) {
+                        event.stopPropagation();
+                        // When clicking on inner ring, find the most prominent task in this category
+                        const tasksInCategory = Object.entries(taskData)
+                            .filter(([task, data]) => data.categories[cat])
+                            .sort((a, b) => (b[1].categories[cat] || 0) - (a[1].categories[cat] || 0));
+                        
+                        if (tasksInCategory.length > 0) {
+                            // Highlight the task with most datasets in this category
+                            highlightTask(tasksInCategory[0][0]);
+                        }
                     });
                 
                 // Add labels for larger categories
@@ -592,17 +608,22 @@
                     .attr('class', `task-arc task-${seg.task.replace(/\s/g, '-')} category-${seg.category.replace(/[\/\s]/g, '-')}`)
                     .style('cursor', 'pointer')
                     .on('mouseover', function(event, d) {
-                        d3.select(this).attr('opacity', 0.85);
+                        if (!currentSelection) {
+                            d3.select(this).attr('opacity', 0.85);
+                        }
                         tooltip.style('opacity', .95);
                         tooltip.html(`<strong>${d.task}</strong><br/>Category: ${d.category}<br/>Count: ${d.count} datasets`)
                             .style('left', (event.pageX + 10) + 'px')
                             .style('top', (event.pageY - 28) + 'px');
                     })
                     .on('mouseout', function(d) {
-                        d3.select(this).attr('opacity', 1);
+                        if (!currentSelection) {
+                            d3.select(this).attr('opacity', 1);
+                        }
                         tooltip.style('opacity', 0);
                     })
                     .on('click', function(event, d) {
+                        event.stopPropagation();
                         highlightTask(d.task);
                     });
             });
@@ -623,40 +644,107 @@
                 .text('Total Datasets');
         }
         
+        // Track current selection
+        let currentSelection = null;
+        
         // Interaction functions
         function highlightTask(taskName) {
-            d3.selectAll('.task-arc').attr('opacity', 0.3);
-            d3.selectAll('.category-arc').attr('opacity', 0.5);
+            // Toggle selection if clicking the same task
+            if (currentSelection === taskName) {
+                resetHighlight();
+                currentSelection = null;
+                return;
+            }
+            
+            currentSelection = taskName;
+            
+            // Dim ALL elements first
+            d3.selectAll('.task-arc')
+                .transition()
+                .duration(300)
+                .attr('opacity', 0.15)
+                .style('filter', 'grayscale(100%)');
+            
+            d3.selectAll('.category-arc')
+                .transition()
+                .duration(300)
+                .attr('opacity', 0.2)
+                .style('filter', 'grayscale(100%)');
+            
+            // Dim all cards
             document.querySelectorAll('.task-card').forEach(card => {
                 card.classList.remove('active');
+                card.style.opacity = '0.3';
             });
             
-            d3.selectAll(`.task-${taskName.replace(/\s/g, '-')}`).attr('opacity', 1);
+            // Now highlight ONLY the selected task segments across ALL categories
+            d3.selectAll(`.task-arc.task-${taskName.replace(/\s/g, '-')}`)
+                .transition()
+                .duration(300)
+                .attr('opacity', 1)
+                .style('filter', 'none');
             
+            // Highlight ONLY the categories that contain this task
             Object.keys(taskData[taskName].categories).forEach(cat => {
-                d3.selectAll(`.category-${cat.replace(/[\/\s]/g, '-')}`).attr('opacity', 1);
+                d3.selectAll(`.category-arc.category-${cat.replace(/[\/\s]/g, '-')}`)
+                    .transition()
+                    .duration(300)
+                    .attr('opacity', 1)
+                    .style('filter', 'none');
             });
             
-            document.querySelector(`[data-task="${taskName}"]`)?.classList.add('active');
+            // Highlight only the selected task card
+            const activeCard = document.querySelector(`[data-task="${taskName}"]`);
+            if (activeCard) {
+                activeCard.classList.add('active');
+                activeCard.style.opacity = '1';
+            }
         }
         
         function previewHighlight(taskName) {
-            d3.selectAll('.task-arc').attr('opacity', 0.5);
-            d3.selectAll(`.task-${taskName.replace(/\s/g, '-')}`).attr('opacity', 1);
+            // Don't preview if something is selected
+            if (currentSelection) return;
+            
+            d3.selectAll('.task-arc').attr('opacity', 0.4);
+            d3.selectAll(`.task-arc.task-${taskName.replace(/\s/g, '-')}`).attr('opacity', 1);
         }
         
         function clearPreview() {
+            // Don't clear preview if something is selected
+            if (currentSelection) return;
+            
             d3.selectAll('.task-arc').attr('opacity', 1);
             d3.selectAll('.category-arc').attr('opacity', 1);
         }
         
         function resetHighlight() {
-            d3.selectAll('.task-arc').attr('opacity', 1);
-            d3.selectAll('.category-arc').attr('opacity', 1);
+            currentSelection = null;
+            
+            d3.selectAll('.task-arc')
+                .transition()
+                .duration(300)
+                .attr('opacity', 1)
+                .style('filter', 'none');
+            
+            d3.selectAll('.category-arc')
+                .transition()
+                .duration(300)
+                .attr('opacity', 1)
+                .style('filter', 'none');
+            
             document.querySelectorAll('.task-card').forEach(card => {
                 card.classList.remove('active');
+                card.style.opacity = '1';
             });
         }
+        
+        // Add click on background to reset
+        document.addEventListener('click', function(event) {
+            // Check if click was outside chart and cards
+            if (!event.target.closest('#chart') && !event.target.closest('.task-card')) {
+                resetHighlight();
+            }
+        });
         
         // Initial draw
         drawChart();
