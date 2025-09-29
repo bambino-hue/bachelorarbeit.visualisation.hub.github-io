@@ -6,10 +6,15 @@
     <title>Two-Layer Radial Chart</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-            margin: 0;
-            padding: 20px;
+            padding: 10px;
             background: #f5f7fa;
             min-height: 100vh;
             display: flex;
@@ -20,50 +25,64 @@
         .container {
             background: white;
             border-radius: 16px;
-            padding: 40px;
+            padding: 20px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            max-width: 1400px;
             width: 100%;
+            max-width: 1400px;
         }
         
         h1 {
             text-align: center;
             color: #1a202c;
             margin-bottom: 8px;
-            font-size: 32px;
+            font-size: clamp(20px, 4vw, 32px);
             font-weight: 600;
         }
         
         .subtitle {
             text-align: center;
             color: #64748b;
-            margin-bottom: 40px;
-            font-size: 16px;
+            margin-bottom: 20px;
+            font-size: clamp(12px, 2vw, 16px);
         }
         
         .main-content {
             display: flex;
-            gap: 60px;
+            gap: 20px;
             align-items: center;
             justify-content: center;
+            flex-wrap: wrap;
         }
         
         #chart {
-            flex: 0 0 auto;
+            flex: 1 1 auto;
+            min-width: 300px;
+            max-width: 600px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #chart svg {
+            width: 100% !important;
+            height: auto !important;
+            max-width: 600px;
         }
         
         .task-cards {
             display: flex;
             flex-direction: column;
-            gap: 16px;
-            min-width: 300px;
+            gap: 12px;
+            flex: 1 1 300px;
+            min-width: 250px;
+            max-width: 400px;
         }
         
         .task-card {
             background: white;
             border: 2px solid #e2e8f0;
             border-radius: 12px;
-            padding: 16px 20px;
+            padding: 12px 16px;
             transition: all 0.3s ease;
             cursor: pointer;
             position: relative;
@@ -97,14 +116,14 @@
         }
         
         .task-name {
-            font-size: 15px;
+            font-size: clamp(13px, 1.5vw, 15px);
             font-weight: 600;
             color: #1e293b;
             margin-bottom: 4px;
         }
         
         .task-count {
-            font-size: 14px;
+            font-size: clamp(12px, 1.3vw, 14px);
             color: #64748b;
         }
         
@@ -116,15 +135,15 @@
         }
         
         .category-badge {
-            padding: 2px 8px;
+            padding: 2px 6px;
             border-radius: 4px;
-            font-size: 11px;
+            font-size: clamp(9px, 1.1vw, 11px);
             font-weight: 500;
             color: white;
         }
         
         .arc-label {
-            font-size: 14px;
+            font-size: clamp(10px, 1.4vw, 14px);
             font-weight: 600;
             fill: white;
             text-anchor: middle;
@@ -132,7 +151,7 @@
         }
         
         .value-label {
-            font-size: 12px;
+            font-size: clamp(9px, 1.2vw, 12px);
             fill: rgba(255, 255, 255, 0.95);
             text-anchor: middle;
             pointer-events: none;
@@ -141,8 +160,8 @@
         
         .tooltip {
             position: absolute;
-            padding: 12px 16px;
-            font-size: 14px;
+            padding: 8px 12px;
+            font-size: clamp(12px, 1.4vw, 14px);
             background: white;
             color: #1e293b;
             border-radius: 8px;
@@ -162,57 +181,122 @@
             display: flex;
             justify-content: center;
             flex-wrap: wrap;
-            margin-top: 40px;
-            gap: 32px;
+            margin-top: 20px;
+            gap: 16px;
         }
         
         .legend-item {
             display: flex;
             align-items: center;
-            gap: 10px;
-            font-size: 15px;
+            gap: 8px;
+            font-size: clamp(12px, 1.5vw, 15px);
             color: #475569;
         }
         
         .legend-color {
-            width: 24px;
-            height: 24px;
-            border-radius: 6px;
-        }
-        
-        .controls {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        button {
-            background: #6366f1;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin: 0 6px;
-        }
-        
-        button:hover {
-            background: #4f46e5;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            flex-shrink: 0;
         }
         
         .center-text {
-            font-size: 48px;
+            font-size: clamp(24px, 6vw, 48px);
             font-weight: 700;
             fill: #1e293b;
         }
         
         .center-subtext {
-            font-size: 16px;
+            font-size: clamp(10px, 2vw, 16px);
             fill: #64748b;
+        }
+        
+        /* Mobile styles */
+        @media (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+            
+            .container {
+                padding: 15px;
+                border-radius: 12px;
+            }
+            
+            .main-content {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            #chart {
+                order: 1;
+                max-width: 100%;
+                width: 100%;
+            }
+            
+            .task-cards {
+                order: 2;
+                max-width: 100%;
+                width: 100%;
+            }
+            
+            .task-card {
+                padding: 10px 14px;
+            }
+            
+            .legend {
+                gap: 12px;
+                margin-top: 15px;
+            }
+            
+            .legend-color {
+                width: 16px;
+                height: 16px;
+            }
+        }
+        
+        /* Tablet styles */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .container {
+                padding: 30px;
+            }
+            
+            .main-content {
+                gap: 30px;
+            }
+        }
+        
+        /* Large desktop */
+        @media (min-width: 1400px) {
+            .container {
+                padding: 40px;
+            }
+            
+            .main-content {
+                gap: 60px;
+            }
+            
+            .subtitle {
+                margin-bottom: 40px;
+            }
+            
+            .task-cards {
+                gap: 16px;
+            }
+            
+            .task-card {
+                padding: 16px 20px;
+            }
+            
+            .legend {
+                margin-top: 40px;
+                gap: 32px;
+            }
+            
+            .legend-color {
+                width: 24px;
+                height: 24px;
+                border-radius: 6px;
+            }
         }
     </style>
 </head>
@@ -220,8 +304,6 @@
     <div class="container">
         <h1>Two-Layer Radial Dataset Analysis</h1>
         <div class="subtitle">Inner Ring: Categories | Outer Ring: Tasks</div>
-        
-
         
         <div class="main-content">
             <div id="chart"></div>
@@ -254,12 +336,12 @@
     </div>
     
     <script>
-        // Data with more distinct colors
+        // Data
         const categoryData = {
-            'Speech': { total: 27, color: '#dc2626' },  // Red
-            'Environmental/Natural': { total: 28, color: '#2563eb' },  // Blue
-            'Specialized Audio': { total: 1, color: '#16a34a' },  // Green
-            'Music': { total: 8, color: '#f59e0b' }  // Amber
+            'Speech': { total: 27, color: '#dc2626' },
+            'Environmental/Natural': { total: 28, color: '#2563eb' },
+            'Specialized Audio': { total: 1, color: '#16a34a' },
+            'Music': { total: 8, color: '#f59e0b' }
         };
         
         const taskData = {
@@ -332,212 +414,229 @@
             taskCardsContainer.appendChild(card);
         });
         
-        // Dimensions
-        const width = 600;
-        const height = 600;
-        const innerRadius = 80;
-        const outerRadius = 150;
-        const outerRingInner = 160;
-        const outerRingOuter = 250;
-        
-        // Create SVG
-        const svg = d3.select('#chart')
-            .append('svg')
-            .attr('width', width)
-            .attr('height', height);
-        
-        const g = svg.append('g')
-            .attr('transform', `translate(${width/2},${height/2})`);
-        
-        const tooltip = d3.select('.tooltip');
-        
-        // Calculate angles for categories (starting from top)
-        const categories = Object.keys(categoryData);
-        const categoryTotal = d3.sum(categories.map(c => categoryData[c].total));
-        
-        let currentAngle = -Math.PI / 2; // Start from top
-        const categoryAngles = {};
-        
-        categories.forEach(cat => {
-            const angleSize = (categoryData[cat].total / categoryTotal) * 2 * Math.PI;
-            categoryAngles[cat] = {
-                startAngle: currentAngle,
-                endAngle: currentAngle + angleSize,
-                midAngle: currentAngle + angleSize / 2,
-                size: angleSize
+        // Responsive dimensions
+        function getChartDimensions() {
+            const chartContainer = document.getElementById('chart');
+            const containerWidth = chartContainer.offsetWidth;
+            const size = Math.min(containerWidth, 600);
+            
+            // Scale radii based on chart size
+            const scale = size / 600;
+            
+            return {
+                width: size,
+                height: size,
+                innerRadius: 80 * scale,
+                outerRadius: 150 * scale,
+                outerRingInner: 160 * scale,
+                outerRingOuter: 250 * scale
             };
-            currentAngle += angleSize;
-        });
+        }
         
-        // Arc generators
-        const innerArc = d3.arc()
-            .innerRadius(innerRadius)
-            .outerRadius(outerRadius);
-        
-        const outerArc = d3.arc()
-            .innerRadius(outerRingInner)
-            .outerRadius(outerRingOuter);
-        
-        // Draw inner ring
-        const innerRing = g.append('g').attr('class', 'inner-ring');
-        
-        categories.forEach(cat => {
-            const group = innerRing.append('g');
+        // Draw chart function
+        function drawChart() {
+            // Clear existing chart
+            d3.select('#chart').selectAll('*').remove();
             
-            group.append('path')
-                .datum(categoryAngles[cat])
-                .attr('d', innerArc)
-                .attr('fill', categoryData[cat].color)
-                .attr('stroke', 'white')
-                .attr('stroke-width', 3)
-                .attr('class', `category-arc category-${cat.replace(/[\/\s]/g, '-')}`)
-                .style('cursor', 'pointer')
-                .on('mouseover', function(event, d) {
-                    d3.select(this).attr('opacity', 0.85);
-                    tooltip.style('opacity', .95);
-                    tooltip.html(`<strong>${cat}</strong><br/>Total: ${categoryData[cat].total} datasets`)
-                        .style('left', (event.pageX + 10) + 'px')
-                        .style('top', (event.pageY - 28) + 'px');
-                })
-                .on('mouseout', function(d) {
-                    d3.select(this).attr('opacity', 1);
-                    tooltip.style('opacity', 0);
-                });
+            const dims = getChartDimensions();
             
-            // Add labels (skip Music and Specialized Audio)
-            const angle = categoryAngles[cat].midAngle;
-            const labelRadius = (innerRadius + outerRadius) / 2;
-            const x = Math.cos(angle) * labelRadius;
-            const y = Math.sin(angle) * labelRadius;
+            // Create SVG with viewBox for responsiveness
+            const svg = d3.select('#chart')
+                .append('svg')
+                .attr('viewBox', `0 0 ${dims.width} ${dims.height}`)
+                .attr('preserveAspectRatio', 'xMidYMid meet');
             
-            if (cat === 'Environmental/Natural') {
-                group.append('text')
-                    .attr('class', 'arc-label')
-                    .attr('x', x)
-                    .attr('y', y - 6)
-                    .text('Environmental');
-                group.append('text')
-                    .attr('class', 'arc-label')
-                    .attr('x', x)
-                    .attr('y', y + 9)
-                    .style('font-size', '13px')
-                    .text('Natural');
+            const g = svg.append('g')
+                .attr('transform', `translate(${dims.width/2},${dims.height/2})`);
+            
+            const tooltip = d3.select('.tooltip');
+            
+            // Calculate angles for categories
+            const categories = Object.keys(categoryData);
+            const categoryTotal = d3.sum(categories.map(c => categoryData[c].total));
+            
+            let currentAngle = -Math.PI / 2;
+            const categoryAngles = {};
+            
+            categories.forEach(cat => {
+                const angleSize = (categoryData[cat].total / categoryTotal) * 2 * Math.PI;
+                categoryAngles[cat] = {
+                    startAngle: currentAngle,
+                    endAngle: currentAngle + angleSize,
+                    midAngle: currentAngle + angleSize / 2,
+                    size: angleSize
+                };
+                currentAngle += angleSize;
+            });
+            
+            // Arc generators
+            const innerArc = d3.arc()
+                .innerRadius(dims.innerRadius)
+                .outerRadius(dims.outerRadius);
+            
+            const outerArc = d3.arc()
+                .innerRadius(dims.outerRingInner)
+                .outerRadius(dims.outerRingOuter);
+            
+            // Draw inner ring
+            const innerRing = g.append('g').attr('class', 'inner-ring');
+            
+            categories.forEach(cat => {
+                const group = innerRing.append('g');
                 
-                // Add count for Environmental/Natural
-                const countX = Math.cos(angle) * (outerRadius - 20);
-                const countY = Math.sin(angle) * (outerRadius - 20);
-                group.append('text')
-                    .attr('class', 'value-label')
-                    .attr('x', countX)
-                    .attr('y', countY + 4)
-                    .text(categoryData[cat].total);
-            } else if (cat === 'Speech') {
-                group.append('text')
-                    .attr('class', 'arc-label')
-                    .attr('x', x)
-                    .attr('y', y + 4)
-                    .text(cat);
-                
-                // Add count for Speech
-                const countX = Math.cos(angle) * (outerRadius - 20);
-                const countY = Math.sin(angle) * (outerRadius - 20);
-                group.append('text')
-                    .attr('class', 'value-label')
-                    .attr('x', countX)
-                    .attr('y', countY + 4)
-                    .text(categoryData[cat].total);
-            }
-            // Skip labels for Music and Specialized Audio
-        });
-        
-        // Calculate outer ring segments
-        const segments = [];
-        const tasks = Object.keys(taskData);
-        
-        Object.keys(categoryAngles).forEach(cat => {
-            let segmentStart = categoryAngles[cat].startAngle;
-            
-            tasks.forEach(task => {
-                if (taskData[task].categories[cat]) {
-                    const count = taskData[task].categories[cat];
-                    const proportion = count / categoryData[cat].total;
-                    const segmentSize = categoryAngles[cat].size * proportion;
-                    
-                    segments.push({
-                        task: task,
-                        category: cat,
-                        count: count,
-                        startAngle: segmentStart,
-                        endAngle: segmentStart + segmentSize,
-                        midAngle: segmentStart + segmentSize / 2
+                group.append('path')
+                    .datum(categoryAngles[cat])
+                    .attr('d', innerArc)
+                    .attr('fill', categoryData[cat].color)
+                    .attr('stroke', 'white')
+                    .attr('stroke-width', Math.max(2, 3 * dims.width / 600))
+                    .attr('class', `category-arc category-${cat.replace(/[\/\s]/g, '-')}`)
+                    .style('cursor', 'pointer')
+                    .on('mouseover', function(event, d) {
+                        d3.select(this).attr('opacity', 0.85);
+                        tooltip.style('opacity', .95);
+                        tooltip.html(`<strong>${cat}</strong><br/>Total: ${categoryData[cat].total} datasets`)
+                            .style('left', (event.pageX + 10) + 'px')
+                            .style('top', (event.pageY - 28) + 'px');
+                    })
+                    .on('mouseout', function(d) {
+                        d3.select(this).attr('opacity', 1);
+                        tooltip.style('opacity', 0);
                     });
-                    
-                    segmentStart += segmentSize;
+                
+                // Add labels for larger categories
+                const angle = categoryAngles[cat].midAngle;
+                const labelRadius = (dims.innerRadius + dims.outerRadius) / 2;
+                const x = Math.cos(angle) * labelRadius;
+                const y = Math.sin(angle) * labelRadius;
+                
+                // Only show labels on larger screens or for main categories
+                if (dims.width > 400) {
+                    if (cat === 'Environmental/Natural') {
+                        group.append('text')
+                            .attr('class', 'arc-label')
+                            .attr('x', x)
+                            .attr('y', y - 6)
+                            .text('Environmental');
+                        group.append('text')
+                            .attr('class', 'arc-label')
+                            .attr('x', x)
+                            .attr('y', y + 9)
+                            .style('font-size', `${13 * dims.width / 600}px`)
+                            .text('Natural');
+                        
+                        const countX = Math.cos(angle) * (dims.outerRadius - 20 * dims.width / 600);
+                        const countY = Math.sin(angle) * (dims.outerRadius - 20 * dims.width / 600);
+                        group.append('text')
+                            .attr('class', 'value-label')
+                            .attr('x', countX)
+                            .attr('y', countY + 4)
+                            .text(categoryData[cat].total);
+                    } else if (cat === 'Speech') {
+                        group.append('text')
+                            .attr('class', 'arc-label')
+                            .attr('x', x)
+                            .attr('y', y + 4)
+                            .text(cat);
+                        
+                        const countX = Math.cos(angle) * (dims.outerRadius - 20 * dims.width / 600);
+                        const countY = Math.sin(angle) * (dims.outerRadius - 20 * dims.width / 600);
+                        group.append('text')
+                            .attr('class', 'value-label')
+                            .attr('x', countX)
+                            .attr('y', countY + 4)
+                            .text(categoryData[cat].total);
+                    }
                 }
             });
-        });
-        
-        // Draw outer ring
-        const outerRing = g.append('g').attr('class', 'outer-ring');
-        
-        segments.forEach(seg => {
-            const taskIndex = tasks.indexOf(seg.task);
             
-            outerRing.append('path')
-                .datum(seg)
-                .attr('d', d => outerArc({startAngle: d.startAngle, endAngle: d.endAngle}))
-                .attr('fill', d3.color(categoryData[seg.category].color).darker(taskIndex * 0.2))
-                .attr('stroke', 'white')
-                .attr('stroke-width', 2)
-                .attr('class', `task-arc task-${seg.task.replace(/\s/g, '-')} category-${seg.category.replace(/[\/\s]/g, '-')}`)
-                .style('cursor', 'pointer')
-                .on('mouseover', function(event, d) {
-                    d3.select(this).attr('opacity', 0.85);
-                    tooltip.style('opacity', .95);
-                    tooltip.html(`<strong>${d.task}</strong><br/>Category: ${d.category}<br/>Count: ${d.count} datasets`)
-                        .style('left', (event.pageX + 10) + 'px')
-                        .style('top', (event.pageY - 28) + 'px');
-                })
-                .on('mouseout', function(d) {
-                    d3.select(this).attr('opacity', 1);
-                    tooltip.style('opacity', 0);
-                })
-                .on('click', function(d) {
-                    highlightTask(d.task);
+            // Calculate outer ring segments
+            const segments = [];
+            const tasks = Object.keys(taskData);
+            
+            Object.keys(categoryAngles).forEach(cat => {
+                let segmentStart = categoryAngles[cat].startAngle;
+                
+                tasks.forEach(task => {
+                    if (taskData[task].categories[cat]) {
+                        const count = taskData[task].categories[cat];
+                        const proportion = count / categoryData[cat].total;
+                        const segmentSize = categoryAngles[cat].size * proportion;
+                        
+                        segments.push({
+                            task: task,
+                            category: cat,
+                            count: count,
+                            startAngle: segmentStart,
+                            endAngle: segmentStart + segmentSize,
+                            midAngle: segmentStart + segmentSize / 2
+                        });
+                        
+                        segmentStart += segmentSize;
+                    }
                 });
-        });
-        
-        // Center text
-        const centerGroup = g.append('g');
-        
-        centerGroup.append('text')
-            .attr('class', 'center-text')
-            .attr('text-anchor', 'middle')
-            .attr('y', 5)
-            .text('64');
-        
-        centerGroup.append('text')
-            .attr('class', 'center-subtext')
-            .attr('text-anchor', 'middle')
-            .attr('y', 28)
-            .text('Total Datasets');
+            });
+            
+            // Draw outer ring
+            const outerRing = g.append('g').attr('class', 'outer-ring');
+            
+            segments.forEach(seg => {
+                const taskIndex = tasks.indexOf(seg.task);
+                
+                outerRing.append('path')
+                    .datum(seg)
+                    .attr('d', d => outerArc({startAngle: d.startAngle, endAngle: d.endAngle}))
+                    .attr('fill', d3.color(categoryData[seg.category].color).darker(taskIndex * 0.2))
+                    .attr('stroke', 'white')
+                    .attr('stroke-width', Math.max(1.5, 2 * dims.width / 600))
+                    .attr('class', `task-arc task-${seg.task.replace(/\s/g, '-')} category-${seg.category.replace(/[\/\s]/g, '-')}`)
+                    .style('cursor', 'pointer')
+                    .on('mouseover', function(event, d) {
+                        d3.select(this).attr('opacity', 0.85);
+                        tooltip.style('opacity', .95);
+                        tooltip.html(`<strong>${d.task}</strong><br/>Category: ${d.category}<br/>Count: ${d.count} datasets`)
+                            .style('left', (event.pageX + 10) + 'px')
+                            .style('top', (event.pageY - 28) + 'px');
+                    })
+                    .on('mouseout', function(d) {
+                        d3.select(this).attr('opacity', 1);
+                        tooltip.style('opacity', 0);
+                    })
+                    .on('click', function(event, d) {
+                        highlightTask(d.task);
+                    });
+            });
+            
+            // Center text
+            const centerGroup = g.append('g');
+            
+            centerGroup.append('text')
+                .attr('class', 'center-text')
+                .attr('text-anchor', 'middle')
+                .attr('y', 5)
+                .text('64');
+            
+            centerGroup.append('text')
+                .attr('class', 'center-subtext')
+                .attr('text-anchor', 'middle')
+                .attr('y', 28)
+                .text('Total Datasets');
+        }
         
         // Interaction functions
         function highlightTask(taskName) {
-            // Reset all
             d3.selectAll('.task-arc').attr('opacity', 0.3);
             d3.selectAll('.category-arc').attr('opacity', 0.5);
-            d3.selectAll('.task-card').classList.remove('active');
+            document.querySelectorAll('.task-card').forEach(card => {
+                card.classList.remove('active');
+            });
             
-            // Highlight selected
             d3.selectAll(`.task-${taskName.replace(/\s/g, '-')}`).attr('opacity', 1);
             
-            // Highlight related categories
             Object.keys(taskData[taskName].categories).forEach(cat => {
                 d3.selectAll(`.category-${cat.replace(/[\/\s]/g, '-')}`).attr('opacity', 1);
             });
             
-            // Highlight card
             document.querySelector(`[data-task="${taskName}"]`)?.classList.add('active');
         }
         
@@ -554,8 +653,22 @@
         function resetHighlight() {
             d3.selectAll('.task-arc').attr('opacity', 1);
             d3.selectAll('.category-arc').attr('opacity', 1);
-            d3.selectAll('.task-card').classList.remove('active');
+            document.querySelectorAll('.task-card').forEach(card => {
+                card.classList.remove('active');
+            });
         }
+        
+        // Initial draw
+        drawChart();
+        
+        // Redraw on resize with debounce
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                drawChart();
+            }, 250);
+        });
     </script>
 </body>
 </html>
